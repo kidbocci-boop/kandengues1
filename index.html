@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-AO">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<title>Kandengues · Material escolar com segunda vida</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div class="box">
+    <div class="logo"><span class="lg"></span><b>kandengues</b></div>
+    <p style="color:var(--mut)">Material escolar com segunda vida.<br>Entre para comprar ou vender.</p>
+    <div class="f" style="text-align:left">
+      <label>Email<input id="ge" type="email" placeholder="o.seu@email.com" autocomplete="email"></label>
+      <label>Palavra-passe<input id="gp" type="password" placeholder="mínimo 6 caracteres" autocomplete="current-password"></label>
+      <div class="f" id="gsu" hidden style="margin:0">
+        <label>O seu nome<input id="gn" placeholder="Ex.: Maria João" autocomplete="name"></label>
+        <label>O seu WhatsApp<input id="gw" placeholder="Ex.: 923 000 000" inputmode="tel" autocomplete="tel"></label>
+      </div>
+      <button class="btn" id="gb">Entrar</button>
+      <button class="btn o" id="gm" type="button">Ainda não tem conta? Criar conta</button>
+    </div>
+  </div>
+</div>
+
+<header><div class="wrap bar">
+  <a class="logo" href="#"><span class="lg"></span><b>kandengues</b></a>
+  <div class="nav">
+    <button class="btn o" id="adm" hidden>Admin</button>
+    <button class="btn p" id="sell">+ Vender</button>
+    <button class="ico" id="cartb" aria-label="Carrinho"><svg viewBox="0 0 24 24"><path d="M6 8h12l-1 12H7L6 8z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg><i id="cc">0</i></button>
+    <button class="ico" id="out" title="Sair" aria-label="Sair"><svg viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4"/><path d="M16 8l4 4-4 4"/><path d="M20 12H9"/></svg></button>
+  </div>
+</div></header>
+
+<section class="hero"><div class="wrap">
+  <div class="blob"></div>
+  <h1>Material escolar com <em>segunda vida</em>.</h1>
+  <p class="sub">Cada caderno, lápis e livro merece uma segunda história.</p>
+  <div class="cta"><a class="btn o" href="#catalogo">Ver catálogo</a><button class="btn p" id="sell2">Vender o meu material</button></div>
+</div></section>
+
+<main class="wrap" id="catalogo">
+  <div class="steps">
+    <div class="step"><b>1 · Publique</b><span>Foto, nome e o seu WhatsApp.</span></div>
+    <div class="step"><b>2 · Taxa de 3 000 Kz</b><span>Pague por IBAN e anexe o comprovativo.</span></div>
+    <div class="step"><b>3 · Venda</b><span>O cliente fala consigo diretamente.</span></div>
+  </div>
+  <h2>Catálogo</h2>
+  <div class="tools"><input id="q" type="search" placeholder="Procurar lápis, livros, réguas…"><div class="chips" id="chips"></div></div>
+  <div class="grid" id="grid"></div>
+</main>
+<footer>Kandengues · Luanda, Angola · Feito com carinho para os estudantes</footer>
+
+<div class="ov" id="ovc"><div class="modal" id="mp">
+  <h2>Publicar produto <button class="x" data-close>×</button></h2>
+  <div class="pay">
+    <b>Taxa: 3 000 Kz</b>
+    <div style="font-size:14px;color:var(--mut)">Transfira para o IBAN abaixo e anexe o comprovativo para libertar a publicação.</div>
+    <div class="iban"><code id="iban"></code><button class="btn o" id="cp" style="padding:6px 14px;font-size:13px">Copiar</button></div>
+  </div>
+  <div class="drop" id="dp">📎 <b>Comprovativo de pagamento</b><br>Arraste, cole (Ctrl+V) ou toque para escolher<div id="pp"></div></div>
+  <input type="file" id="fp" accept="image/*" hidden>
+  <fieldset id="fs" disabled class="f" style="margin-top:14px">
+    <label>Nome do vendedor<input id="sn"></label>
+    <label>WhatsApp do vendedor<input id="sw" inputmode="tel"></label>
+    <label>Nome do produto<input id="pn" placeholder="Ex.: Livro de Física 12ª classe"></label>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <label>Categoria<select id="pc"></select></label>
+      <label>Preço (Kz)<input id="pv" type="number" min="0" inputmode="numeric" placeholder="1500"></label>
+    </div>
+    <div class="drop" id="di">🖼️ <b>Foto do produto</b><br>Arraste, cole ou toque para escolher<div id="pi"></div></div>
+    <input type="file" id="fi" accept="image/*" hidden>
+    <button class="btn" id="pub">Publicar produto</button>
+  </fieldset>
+</div></div>
+
+<div class="ov" id="ova"><div class="modal"><h2>Pagamentos pendentes <button class="x" id="ax">×</button></h2><div id="al"></div></div></div>
+<aside class="drawer" id="dw">
+  <h2 style="display:flex;justify-content:space-between;align-items:center">Carrinho <button class="x" id="dx">×</button></h2>
+  <div id="cl" style="flex:1;overflow:auto"></div>
+  <div id="cf"></div>
+</aside>
+<div class="toast" id="ts"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
