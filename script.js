@@ -32,7 +32,7 @@ sb.auth.onAuthStateChange((_e,s)=>setTimeout(()=>setUser(s?s.user:null),0));
 async function setUser(u){
  user=u;gate();isAdmin=false;
  if(u){const r=await sb.from("admins").select("user_id").eq("user_id",u.id).maybeSingle();isAdmin=!!r.data}
- $("#adm").hidden=!isAdmin;await load()}
+ $("#adm").hidden=!isAdmin;clearInterval(window._pl);if(isAdmin)window._pl=setInterval(load,60000);await load()}
 
 /* ---------- avisos ao vendedor ---------- */
 function notify(m){const n=$("#nt");n.innerHTML=`<span>${m}</span><button class="x" id="ntx" aria-label="Fechar">×</button>`;n.hidden=false}
@@ -43,7 +43,7 @@ function checkNotices(){
  try{seen=JSON.parse(localStorage.getItem(k)||"{}")}catch(e){}
  const msgs=[];
  prods.filter(p=>p.mine).forEach(p=>{
-  if(seen[p.id]=="pendente"&&p.status=="aprovado")msgs.push(`O seu produto <b>${esc(p.name)}</b> foi aprovado e já está visível a todos.`);
+  if(seen[p.id]=="pendente"&&p.status=="aprovado")msgs.push(`🎉 O seu produto <b>${esc(p.name)}</b> foi aprovado e já está visível a todos.`);
   if(seen[p.id]=="pendente"&&p.status=="recusado")msgs.push(`O pagamento do produto <b>${esc(p.name)}</b> não foi confirmado. Fale connosco para resolver.`);
   seen[p.id]=p.status});
  try{localStorage.setItem(k,JSON.stringify(seen))}catch(e){}
@@ -51,12 +51,18 @@ function checkNotices(){
 /* atualização em direto: quando algo muda na base de dados, o catálogo e os avisos atualizam sozinhos */
 sb.channel("kd-produtos").on("postgres_changes",{event:"*",schema:"public",table:"products"},()=>{if(user)load()}).subscribe();
 
+/* contador de produtos por aprovar (só para o administrador) */
+function updateBadge(){
+ const n=isAdmin?prods.filter(p=>p.status=="pendente").length:0,b=$("#ac");
+ b.textContent=n;b.hidden=!n;
+ document.title=(n?"("+n+") ":"")+"Kandengues · Material escolar com segunda vida"}
+
 /* ---------- catálogo ---------- */
 async function load(){
  const {data,error}=await sb.from("products").select("*").order("created_at",{ascending:false});
  if(error){toast("Não foi possível carregar os produtos");return}
  prods=data.map(r=>({id:r.id,name:r.name,cat:r.category,price:r.price,seller:r.seller_name,wa:r.whatsapp,img:r.image_url,status:r.status,path:r.proof_path,mine:!!user&&r.seller_id==user.id}));
- checkNotices();grid();cartUI()}
+ checkNotices();updateBadge();grid();cartUI()}
 function chips(){$("#chips").innerHTML=CATS.map(c=>`<button class="chip ${c==cat?"on":""}" data-c="${esc(c)}">${esc(c)}</button>`).join("");
  $("#pc").innerHTML=CATS.slice(1).map(c=>`<option>${esc(c)}</option>`).join("")}
 $("#chips").onclick=e=>{const b=e.target.closest("[data-c]");if(b){cat=b.dataset.c;chips();grid()}};
