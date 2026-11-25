@@ -1,6 +1,6 @@
 /* ===== CONFIGURAÇÃO: cole aqui os dados do seu projeto Supabase (Project Settings > API) ===== */
 const SUPABASE_URL="https://iwkgpuccnrtuvnuqkdet.supabase.co",SUPABASE_KEY="sb_publishable_xVMFyJVJWuGOJpHHpGZN9w_pEh1ziqw";
-const IBAN="AO06 005100005939333310170",FEE=3000;
+const IBAN="AO06 0051 0000 5939 3333 1017 0",FEE=3000;
 const CATS=["Todos","Lápis e canetas","Livros","Réguas e geometria","Desenho","Mochilas e estojos","Outros"];
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s);
@@ -43,7 +43,7 @@ function checkNotices(){
  try{seen=JSON.parse(localStorage.getItem(k)||"{}")}catch(e){}
  const msgs=[];
  prods.filter(p=>p.mine).forEach(p=>{
-  if(seen[p.id]=="pendente"&&p.status=="aprovado")msgs.push(`🎉 O seu produto <b>${esc(p.name)}</b> foi aprovado e já está visível a todos.`);
+  if(seen[p.id]=="pendente"&&p.status=="aprovado")msgs.push(`O seu produto <b>${esc(p.name)}</b> foi aprovado e já está visível a todos.`);
   if(seen[p.id]=="pendente"&&p.status=="recusado")msgs.push(`O pagamento do produto <b>${esc(p.name)}</b> não foi confirmado. Fale connosco para resolver.`);
   seen[p.id]=p.status});
  try{localStorage.setItem(k,JSON.stringify(seen))}catch(e){}
@@ -96,11 +96,37 @@ const dw=$("#dw");$("#cartb").onclick=()=>{cartUI();dw.classList.add("on")};$("#
 
 /* ---------- publicar ---------- */
 function drop(el,input,set){
- el.onclick=()=>input.click();input.onchange=()=>input.files[0]&&set(input.files[0]);
+ el.onclick=()=>input.click();input.onchange=()=>{const f=input.files[0];input.value="";f&&set(f)};
  ["dragenter","dragover"].forEach(v=>el.addEventListener(v,e=>{e.preventDefault();el.classList.add("hot")}));
  ["dragleave","drop"].forEach(v=>el.addEventListener(v,e=>{e.preventDefault();el.classList.remove("hot")}));
  el.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];f&&f.type.startsWith("image/")&&set(f)})}
-function setProof(f){shrink(f,900,d=>{proof=d;$("#pp").innerHTML=`<span class="ok">Comprovativo anexado ✓</span><img src="${d}" alt="">`;$("#fs").disabled=false;toast("Publicação libertada!")})}
+/* verificação do IBAN no comprovativo (leitura de texto na imagem, feita no próprio telemóvel/computador) */
+let ocrWorker=null,checking=false;
+async function readText(img){
+ if(!ocrWorker)ocrWorker=await Tesseract.createWorker("eng");
+ const r=await ocrWorker.recognize(img);return r.data.text}
+function approx(pat,txt,max){ /* procura o IBAN no texto, aceitando até "max" erros de leitura */
+ let prev=new Array(txt.length+1).fill(0);
+ for(let i=1;i<=pat.length;i++){const cur=[i];
+  for(let j=1;j<=txt.length;j++)cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(pat[i-1]==txt[j-1]?0:1));
+  prev=cur}
+ return Math.min(...prev)<=max}
+function ibanOk(text){
+ const want=IBAN.replace(/\D/g,"");
+ const t=text.toUpperCase().replace(/O/g,"0").replace(/[IL|]/g,"1").replace(/\D/g,"");
+ return want.length>=15&&approx(want,t,3)}
+function setProof(f){
+ if(checking)return;
+ shrink(f,1400,async d=>{
+  checking=true;proof=null;$("#fs").disabled=true;
+  $("#pp").innerHTML=`<span>A verificar o IBAN no comprovativo… pode demorar alguns segundos</span><img src="${d}" alt="">`;
+  try{
+   const text=await readText(d);
+   if(ibanOk(text)){proof=d;$("#fs").disabled=false;
+    $("#pp").innerHTML=`<span class="ok">IBAN reconhecido ✓ Comprovativo aceite</span><img src="${d}" alt="">`;toast("Publicação libertada!")}
+   else $("#pp").innerHTML=`<span style="color:#c0392b;font-weight:700">Não reconheci o IBAN no comprovativo.</span><br><small>Use uma imagem nítida e sem cortes, onde o IBAN para o qual pagou esteja visível, e tente outra vez.</small><img src="${d}" alt="">`;
+  }catch(e){$("#pp").innerHTML=`<span style="color:#c0392b;font-weight:700">Não foi possível verificar agora.</span><br><small>Verifique a internet e tente outra vez.</small>`}
+  checking=false})}
 function setPhoto(f){shrink(f,700,d=>{photo=d;$("#pi").innerHTML=`<img src="${d}" alt="">`})}
 drop($("#dp"),$("#fp"),setProof);drop($("#di"),$("#fi"),setPhoto);
 document.addEventListener("paste",e=>{if(!$("#ovc").classList.contains("on"))return;
