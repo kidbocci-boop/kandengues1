@@ -87,3 +87,6 @@ fieldset{border:0;padding:0;margin:0;display:grid;gap:12px;transition:opacity .3
 .modal{padding:20px;border-radius:22px}.drawer{width:100%}}
 
 [hidden]{display:none!important}.tag.w{background:var(--p2);border:1px solid var(--line)}
+.nt{position:fixed;top:calc(72px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 28px));background:var(--card);border:1px solid var(--line);border-left:4px solid var(--g);border-radius:18px;padding:14px 16px;box-shadow:0 12px 36px rgba(58,92,73,.18);z-index:40;display:flex;gap:10px;align-items:flex-start;animation:up .4s}
+.nt span{flex:1}
+.rm{background:none;border:0;color:var(--mut);font-size:13px;text-decoration:underline;padding:8px 0 0;align-self:flex-start}.rm.arm{color:#c0392b;font-weight:700}

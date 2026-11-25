@@ -6,7 +6,7 @@ const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const kz=n=>Number(n).toLocaleString("pt-PT")+" Kz";
-let user=null,isAdmin=false,prods=[],cart=[],cat="Todos",q="",proof=null,photo=null,mode="in";
+let pend=[],user=null,isAdmin=false,prods=[],cart=[],cat="Todos",q="",proof=null,photo=null,mode="in";
 try{cart=JSON.parse(localStorage.getItem("kd_cart")||"[]")}catch(e){}
 const saveCart=()=>{try{localStorage.setItem("kd_cart",JSON.stringify(cart))}catch(e){}};
 function toast(m){const t=$("#ts");t.textContent=m;t.classList.add("on");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("on"),3200)}
@@ -34,12 +34,29 @@ async function setUser(u){
  if(u){const r=await sb.from("admins").select("user_id").eq("user_id",u.id).maybeSingle();isAdmin=!!r.data}
  $("#adm").hidden=!isAdmin;await load()}
 
+/* ---------- avisos ao vendedor ---------- */
+function notify(m){const n=$("#nt");n.innerHTML=`<span>${m}</span><button class="x" id="ntx" aria-label="Fechar">×</button>`;n.hidden=false}
+$("#nt").onclick=e=>{if(e.target.id=="ntx")$("#nt").hidden=true};
+function checkNotices(){
+ if(!user)return;
+ const k="kd_seen_"+user.id;let seen={};
+ try{seen=JSON.parse(localStorage.getItem(k)||"{}")}catch(e){}
+ const msgs=[];
+ prods.filter(p=>p.mine).forEach(p=>{
+  if(seen[p.id]=="pendente"&&p.status=="aprovado")msgs.push(`🎉 O seu produto <b>${esc(p.name)}</b> foi aprovado e já está visível a todos.`);
+  if(seen[p.id]=="pendente"&&p.status=="recusado")msgs.push(`O pagamento do produto <b>${esc(p.name)}</b> não foi confirmado. Fale connosco para resolver.`);
+  seen[p.id]=p.status});
+ try{localStorage.setItem(k,JSON.stringify(seen))}catch(e){}
+ if(msgs.length)notify(msgs.join("<br>"))}
+/* atualização em direto: quando algo muda na base de dados, o catálogo e os avisos atualizam sozinhos */
+sb.channel("kd-produtos").on("postgres_changes",{event:"*",schema:"public",table:"products"},()=>{if(user)load()}).subscribe();
+
 /* ---------- catálogo ---------- */
 async function load(){
  const {data,error}=await sb.from("products").select("*").order("created_at",{ascending:false});
  if(error){toast("Não foi possível carregar os produtos");return}
- prods=data.map(r=>({id:r.id,name:r.name,cat:r.category,price:r.price,seller:r.seller_name,wa:r.whatsapp,img:r.image_url,status:r.status,mine:!!user&&r.seller_id==user.id}));
- grid();cartUI()}
+ prods=data.map(r=>({id:r.id,name:r.name,cat:r.category,price:r.price,seller:r.seller_name,wa:r.whatsapp,img:r.image_url,status:r.status,path:r.proof_path,mine:!!user&&r.seller_id==user.id}));
+ checkNotices();grid();cartUI()}
 function chips(){$("#chips").innerHTML=CATS.map(c=>`<button class="chip ${c==cat?"on":""}" data-c="${esc(c)}">${esc(c)}</button>`).join("");
  $("#pc").innerHTML=CATS.slice(1).map(c=>`<option>${esc(c)}</option>`).join("")}
 $("#chips").onclick=e=>{const b=e.target.closest("[data-c]");if(b){cat=b.dataset.c;chips();grid()}};
@@ -51,8 +68,18 @@ function grid(){
   <div class="ph">${thumb(p)}</div>
   <div class="cb"><span class="tag">${esc(p.cat)}</span>${p.status!="aprovado"?`<span class="tag w">${p.status=="pendente"?"A aguardar confirmação do pagamento":"Recusado"}</span>`:""}<h3>${esc(p.name)}</h3><small>Vendedor: ${esc(p.seller)}</small><div class="pr">${kz(p.price)}</div>
   ${p.status=="aprovado"?`<div class="act"><button class="btn" data-add="${p.id}">${cart.includes(p.id)?"No carrinho ✓":"+ Carrinho"}</button>
-  <a class="btn o" target="_blank" rel="noopener" href="${wa(p.wa,`Olá ${p.seller}! Tenho interesse em “${p.name}” (${kz(p.price)}) que vi no Kandengues.`)}">WhatsApp</a></div>`:""}</div></article>`).join(""):`<div class="empty">Ainda não há produtos aqui 🌱<br>Seja o primeiro a publicar!</div>`}
-$("#grid").onclick=e=>{const b=e.target.closest("[data-add]");if(!b)return;const id=b.dataset.add;
+  <a class="btn o" target="_blank" rel="noopener" href="${wa(p.wa,`Olá ${p.seller}! Tenho interesse em “${p.name}” (${kz(p.price)}) que vi no Kandengues.`)}">WhatsApp</a></div>`:""}${p.mine||isAdmin?`<button class="rm" data-del="${p.id}">Remover produto</button>`:""}</div></article>`).join(""):`<div class="empty">Ainda não há produtos aqui 🌱<br>Seja o primeiro a publicar!</div>`}
+async function delProduct(id){
+ const p=prods.find(x=>x.id==id);if(!p)return;
+ const r=await sb.from("products").delete().eq("id",id).select();
+ if(r.error||!r.data.length)return toast("Não foi possível remover o produto");
+ await sb.storage.from("produtos").remove([p.path]);
+ cart=cart.filter(i=>i!=id);saveCart();toast("Produto removido");load()}
+$("#grid").onclick=e=>{const d=e.target.closest("[data-del]");
+ if(d){if(d.dataset.arm!="1"){d.dataset.arm="1";d.classList.add("arm");d.textContent="Confirmar remoção";
+   setTimeout(()=>{d.dataset.arm="";d.classList.remove("arm");d.textContent="Remover produto"},3500);return}
+  delProduct(d.dataset.del);return}
+ const b=e.target.closest("[data-add]");if(!b)return;const id=b.dataset.add;
  if(!cart.includes(id)){cart.push(id);saveCart();toast("Adicionado ao carrinho")}cartUI();grid()};
 
 /* ---------- carrinho ---------- */
@@ -106,14 +133,20 @@ $("#pub").onclick=async()=>{
 async function adminList(){
  $("#al").innerHTML="<p>A carregar…</p>";
  const {data}=await sb.from("products").select("*").eq("status","pendente").order("created_at");
- const rows=await Promise.all((data||[]).map(async r=>{
+ pend=data||[];const rows=await Promise.all(pend.map(async r=>{
   const u=await sb.storage.from("comprovativos").createSignedUrl(r.proof_path,3600),link=u.data?u.data.signedUrl:"#";
-  return `<div class="ci"><div class="t"><a href="${esc(link)}" target="_blank" rel="noopener"><img src="${esc(link)}" alt="comprovativo"></a></div><div><b>${esc(r.name)}</b><small>${esc(r.seller_name)} · ${esc(r.whatsapp)} · ${kz(r.price)}</small></div><button class="btn" data-ok="${r.id}" style="padding:6px 12px" title="Aprovar">✓</button><button class="btn o" data-no="${r.id}" style="padding:6px 12px" title="Recusar">✕</button></div>`}));
+  return `<div class="ci" data-row="${r.id}"><div class="t"><a href="${esc(link)}" target="_blank" rel="noopener"><img src="${esc(link)}" alt="comprovativo"></a></div><div><b>${esc(r.name)}</b><small>${esc(r.seller_name)} · ${esc(r.whatsapp)} · ${kz(r.price)}</small></div><button class="btn" data-ok="${r.id}" style="padding:6px 12px" title="Aprovar">✓</button><button class="btn o" data-no="${r.id}" style="padding:6px 12px" title="Recusar">✕</button></div>`}));
  $("#al").innerHTML=rows.join("")||"<p style='color:var(--mut)'>Sem pagamentos pendentes.</p>"}
 $("#adm").onclick=()=>{$("#ova").classList.add("on");adminList()};
 $("#ax").onclick=()=>$("#ova").classList.remove("on");
 $("#al").onclick=async e=>{const b=e.target.closest("[data-ok],[data-no]");if(!b)return;
- const r=await sb.from("products").update({status:b.dataset.ok?"aprovado":"recusado"}).eq("id",b.dataset.ok||b.dataset.no);
- if(r.error)return toast("Erro: "+r.error.message);adminList();load()};
+ const ok=!!b.dataset.ok,id=b.dataset.ok||b.dataset.no,p=pend.find(x=>x.id==id);
+ if(!p)return;b.disabled=true;
+ const r=await sb.from("products").update({status:ok?"aprovado":"recusado"}).eq("id",id);
+ if(r.error){b.disabled=false;return toast("Erro: "+r.error.message)}
+ const msg=ok?`Olá ${p.seller_name}! O seu produto “${p.name}” foi aprovado e já está visível no Kandengues. Boas vendas!`:`Olá ${p.seller_name}! Não conseguimos confirmar o pagamento do produto “${p.name}” no Kandengues. Pode enviar o comprovativo outra vez?`;
+ const row=$("#al").querySelector(`[data-row="${id}"]`);
+ if(row)row.innerHTML=`<div><b>${esc(p.name)}</b><small>${ok?"Aprovado ✓":"Recusado"}</small></div><a class="btn" target="_blank" rel="noopener" style="padding:8px 14px;font-size:14px" href="${wa(p.whatsapp,msg)}">Avisar no WhatsApp</a>`;
+ load()};
 
 chips();grid();cartUI();gate();
